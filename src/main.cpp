@@ -382,6 +382,7 @@ RoutineResult startRoutine() {
     for (int i = 0; i < numberOfSets; ++i) {
         for (int j = 0; j < roundCount; ++j) {
             for (int k = 0; k < hangTime; ++k) {
+
                 while (digitalRead(16)) {
                     if (!digitalRead(12)) {
                         return FAILURE;
@@ -395,14 +396,17 @@ RoutineResult startRoutine() {
                 }
                 setUpdate("Hang for: " + String(hangTime - k));
                 toggle = true;
-                delayWithLoop();
 
+                delayWithLoop();
             }
             if (j + 1 < roundCount) {
                 for (int k = 0; k < pauseTime; ++k) {
                     setUpdate("Resting: " + String(pauseTime - k));
                     delayWithLoop();
                 }
+                tone(2, 1000, 250);
+
+
             }
 
         }
@@ -411,8 +415,9 @@ RoutineResult startRoutine() {
             setUpdate("Resting: " + String(restTime - k));
             delayWithLoop();
         }
-
+        tone(2, 2000, 250);
     }
+    tone(2, 2500, 250);
     menu->setPage(ROUTINE);
     inRoutine = false;
     return SUCCESS;
@@ -424,6 +429,8 @@ RoutineResult startRoutine() {
 //-----------------------------------------------------------
 void setup() {
     pinMode(16, INPUT_PULLUP);
+    pinMode(2, OUTPUT);
+
     /**
      * Serial setup
      */

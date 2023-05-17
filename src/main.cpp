@@ -17,12 +17,12 @@ using namespace ciag::bluefairy;
 //-------------------Configuration section-------------------
 //-----------------------------------------------------------
 
-const char *networkSSID = "Gbeks";
-const char *networkPassword = "GbeksRock@home";
-String baseURL = "162.55.70.227";
+const char *networkSSID = "";
+const char *networkPassword = "";
+String baseURL = "";
 uint port = 6969;
-String username = "shmeziBoard";
-String password = "shmeziBoard";
+String username = "";
+String password = "";
 
 enum PressType
 {

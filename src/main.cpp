@@ -18,8 +18,8 @@ using namespace ciag::bluefairy;
 //-------------------Configuration section-------------------
 //-----------------------------------------------------------
 
-const char *networkSSID = "Gbeks";
-const char *networkPassword = "GbeksRock@home";
+const char *networkSSID = "";
+const char *networkPassword = "";
 String baseURL = "backend.ezra.lol"; // DO NOT ADD https / http for IPS!
 uint port = 1200;
 String username = "MyDoom99";

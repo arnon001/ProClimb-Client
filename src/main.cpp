@@ -8,7 +8,8 @@ using namespace ciag::bluefairy;
 #include <Arduino.h>
 
 #include <utility>
-
+#include <ESP32Servo.h>
+#include "ESP32Tone.h"
 #include <map>
 
 #include <vector>
@@ -17,25 +18,32 @@ using namespace ciag::bluefairy;
 //-------------------Configuration section-------------------
 //-----------------------------------------------------------
 
-const char *networkSSID = "";
-const char *networkPassword = "";
-String baseURL = "";
-uint port = 6969;
-String username = "";
-String password = "";
-
+const char *networkSSID = "Gbeks";
+const char *networkPassword = "GbeksRock@home";
+String baseURL = "backend.ezra.lol"; // DO NOT ADD https / http for IPS!
+uint port = 1200;
+String username = "MyDoom99";
+String password = "MyDoom99";
+bool debug = true;
 enum PressType
 {
     SHORT = 1000,
     LONG = 5000
 };
 
+// Pins:
+int speaker = 2; //DO NOT USE UINT, as the lib for PWM that controlls the speaker and the servo get f**ed up as they have their own tone method.
+uint action = 12;
+uint servoPort = 13;
+uint sda = 14;
+uint scl = 15;
+uint hangSensor = 16;
 //-----------------------------------------------------------
 //----------------------Internal Library---------------------
 //-----------------------------------------------------------
 
 Scheduler scheduler;
-
+Servo servo;
 void subLoop(bool = true);
 
 class LCD
@@ -49,6 +57,11 @@ private:
     LCDIC2 *display;
 
 public:
+    /**
+     * A LCD Wrapper for use with I2CLCD Library.
+     * @param lines Amount of lines the display has
+     * @param chars Chars per row
+     */
     LCD(uint lines, uint chars, uint address)
     {
         this->lines = lines;
@@ -56,7 +69,18 @@ public:
         this->address = address;
         display = new LCDIC2(address, chars, lines);
         display->begin();
+        display->setDisplay(true);
+
         clearLcd();
+    }
+    void off()
+    {
+        display->setBacklight(false);
+    }
+
+    void on()
+    {
+        display->setBacklight(true);
     }
 
     LCD *setScrollDirection(bool direction)
@@ -68,6 +92,11 @@ public:
 
     LCD *writeAt(String str, uint x, uint y)
     {
+        if (debug)
+        {
+            Serial.println("[LOG] " + str);
+        }
+
         display->setCursor(x, y);
         display->print(std::move(str));
         return this;
@@ -132,9 +161,9 @@ public:
         display->setCursor(false);
         display->setShift(false);
         display->setCursor(0, 0);
+
         return this;
     }
-
     LCD *delayedClear(int amountMS = 500)
     {
         delay(amountMS);
@@ -372,6 +401,7 @@ void onEvent(WStype_t type, const uint8_t *payload, size_t length)
 
 void connectWS()
 {
+
     ws.begin(baseURL, port, "/api/connection");
     ws.setAuthorization(username.c_str(), password.c_str());
     ws.onEvent(onEvent);
@@ -413,9 +443,9 @@ RoutineResult startRoutine()
 {
     inRoutine = true;
     setUpdate("Hang to start!");
-    while (digitalRead(16))
+    while (digitalRead(hangSensor))
     {
-        if (!digitalRead(12))
+        if (!digitalRead(action))
         {
             return STOP;
         }
@@ -430,27 +460,27 @@ RoutineResult startRoutine()
             for (int k = 0; k < hangTime; ++k)
             {
 
-                while (digitalRead(16))
+                while (digitalRead(hangSensor))
                 {
-                    if (!digitalRead(12))
+                    if (!digitalRead(action))
                     {
-                        noTone(2);
+                        noTone(speaker);
                         return FAILURE;
                     }
                     if (toggle)
                     {
-                        tone(2, 1000);
+                        tone(speaker, 1000);
                         setUpdate("Return hanging!");
                         toggle = false;
                     }
                     subLoop(false);
                 }
-                noTone(2);
+                noTone(speaker);
                 setUpdate("Hang for: " + String(hangTime - k));
                 toggle = true;
                 delayWithLoop();
             }
-            tone(2, 500, 250);
+            tone(speaker, 500, 250);
             if (j + 1 < roundCount)
             {
                 for (int k = 0; k < pauseTime; ++k)
@@ -458,7 +488,7 @@ RoutineResult startRoutine()
                     setUpdate("Resting: " + String(pauseTime - k));
                     delayWithLoop();
                 }
-                tone(2, 1000, 250);
+                tone(speaker, 1000, 250);
             }
         }
 
@@ -467,12 +497,16 @@ RoutineResult startRoutine()
             setUpdate("Resting: " + String(restTime - k));
             delayWithLoop();
         }
-        tone(2, 2000, 250);
+        tone(speaker, 2000, 250);
     }
+    tone(speaker, 2500, 250);
+    delay(50);
+    tone(speaker, 3000, 250);
+    delay(50);
+    tone(speaker, 4000, 250);
 
-    tone(2, 2500, 250);
-    tone(2, 3000, 250);
     menu->setPage(ROUTINE);
+
     inRoutine = false;
     return SUCCESS;
 }
@@ -482,9 +516,13 @@ RoutineResult startRoutine()
 //-----------------------------------------------------------
 void setup()
 {
-    pinMode(16, INPUT_PULLUP);
-    pinMode(2, OUTPUT);
-
+    pinMode(hangSensor, INPUT_PULLUP);
+    pinMode(speaker, OUTPUT);
+    servo.attach(servoPort, 1000, 2000);
+    ESP32PWM::allocateTimer(0);
+    ESP32PWM::allocateTimer(1);
+    ESP32PWM::allocateTimer(2);
+    ESP32PWM::allocateTimer(3);
     /**
      * Serial setup
      */
@@ -493,8 +531,9 @@ void setup()
     /**
      * Screen startup
      */
-    Wire.begin(14, 15);
+    Wire.begin(sda, scl);
     screen = new LCD(2, 16, 0x27);
+
     menu = new Menu(screen);
     screen->writeCenter("Starting up!", 0)->delayedClear();
     screen->writeCenter("Screen loaded!", 0)->delayedClear();
@@ -509,9 +548,11 @@ void setup()
     {
         delay(500);
     }
-    screen->writeCenter("Connected!", 1)->delayedClear();
+    screen->writeCenter("Connected!", 1);
+    delay(500);
+    screen->clearLcd()->writeCenter("Connecting to socket!");
     connectWS();
-
+    screen->clearLcd();
     screen->writeCenter("Waiting for code!");
 
     menu->createPage(CODE, "ProClimb", "{code}");
@@ -556,10 +597,9 @@ void setup()
         replacers["restTime"] = restTime;
         replacers["numberOfSets"] = numberOfSets;
 
-
         menu->setPage(USER); });
 
-    listenTo(12, [](PressType type)
+    listenTo(action, [](PressType type)
              {
                  if (type == LONG) {
                      disconnect();
@@ -567,7 +607,16 @@ void setup()
                      if (routineId != nullptr && !inRoutine) {
                          switch (startRoutine()) {
                              case SUCCESS:
-                                 ws.sendTXT("success");
+                                ws.sendTXT("success");
+                                servo.write(180);
+                                delay(500);
+                                servo.write(0);
+                                delay(500);
+                                servo.write(180);
+                                delay(500);
+                                servo.write(0);
+                               
+                                connectWS();
                                  break;
                              case FAILURE:
                                  ws.sendTXT("failure");
@@ -586,7 +635,6 @@ void setup()
 
 void subLoop(bool button)
 {
-    // if (button)
     buttonLoop();
 }
 

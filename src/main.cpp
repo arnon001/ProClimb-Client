@@ -551,11 +551,13 @@ void setup()
     screen->writeCenter("Connecting to network", 0);
     screen->writeCenter("SSID: " + String(networkSSID), 0);
 
+    screen->writeCenter("Disconnected!", 1);
     while (WiFi.status() != WL_CONNECTED)
     {
         delay(500);
+
     }
-    screen->writeCenter("Connected!", 1);
+    screen->clearLcd()->writeCenter("Connected!", 1);
     delay(500);
     screen->clearLcd()->writeCenter("Connecting to socket!");
     connectWS();

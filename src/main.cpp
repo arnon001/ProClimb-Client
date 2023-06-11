@@ -13,13 +13,14 @@ using namespace ciag::bluefairy;
 #include <map>
 
 #include <vector>
-
+#include "FS.h"
+#include "SD_MMC.h"
 //-----------------------------------------------------------
 //-------------------Configuration section-------------------
 //-----------------------------------------------------------
 
-const char *networkSSID = "";
-const char *networkPassword = "";
+const char *networkSSID = "network";
+const char *networkPassword = "password";
 String baseURL = "backend.ezra.lol"; // DO NOT ADD https / http for IPS!
 uint port = 1200;
 String username = "MyDoom99";
@@ -32,7 +33,7 @@ enum PressType
 };
 
 // Pins:
-int speaker = 2; //DO NOT USE UINT, as the lib for PWM that controlls the speaker and the servo get f**ed up as they have their own tone method.
+int speaker = 2; // DO NOT USE UINT, as the lib for PWM that controlls the speaker and the servo get f**ed up as they have their own tone method.
 uint action = 12;
 uint servoPort = 13;
 uint sda = 14;
@@ -506,7 +507,13 @@ RoutineResult startRoutine()
     tone(speaker, 4000, 250);
 
     menu->setPage(ROUTINE);
-
+    servo.write(180);
+    delay(500);
+    servo.write(0);
+    delay(500);
+    servo.write(180);
+    delay(500);
+    servo.write(0);
     inRoutine = false;
     return SUCCESS;
 }
@@ -608,15 +615,6 @@ void setup()
                          switch (startRoutine()) {
                              case SUCCESS:
                                 ws.sendTXT("success");
-                                servo.write(180);
-                                delay(500);
-                                servo.write(0);
-                                delay(500);
-                                servo.write(180);
-                                delay(500);
-                                servo.write(0);
-                               
-                                connectWS();
                                  break;
                              case FAILURE:
                                  ws.sendTXT("failure");
